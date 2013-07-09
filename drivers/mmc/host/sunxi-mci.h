@@ -251,30 +251,6 @@ struct sunxi_mmc_ctrl_regs {
 	u32 idmacc;
 };
 
-struct sunxi_mmc_platform_data {
-	/* predefine information */
-	u32 ocr_avail;
-	u32 caps;
-	u32 caps2;
-	u32 f_min;
-	u32 f_max;
-	u32 f_ddr_max;
-	u32 dma_tl;
-	char* regulator;
-
-	/* sys config information */
-	u32 used:8,
-	    cdmode:8,
-	    width:4,
-	    wpmode:4,
-	    has_hwrst:4,
-	    isiodev:4;
-	struct gpio_config mmcio[10];
-	struct gpio_config hwrst;
-	struct gpio_config cd;
-	struct gpio_config wp;
-};
-
 struct sunxi_mmc_host {
 
 	struct platform_device  *pdev;

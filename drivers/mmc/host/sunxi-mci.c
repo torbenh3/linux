@@ -39,97 +39,7 @@
 #include <asm/cacheflush.h>
 #include <asm/uaccess.h>
 
-#include <mach/hardware.h>
-#include <mach/platform.h>
-#include <mach/sys_config.h>
-#include <mach/gpio.h>
-#include <mach/clock.h>
-
 #include "sunxi-mci.h"
-
-static struct sunxi_mmc_host* sw_host[4] = {NULL, NULL, NULL, NULL};
-
-//#define CONFIG_CACULATE_TRANS_TIME
-
-#ifdef CONFIG_CACULATE_TRANS_TIME
-static unsigned long long begin_time, over_time, end_time;
-static volatile struct sunxi_mmc_idma_des *last_pdes;
-#endif
-
-#if 0
-static void uart_put(char c)
-{
-	void __iomem *base = __io_address(0x01c28000);
-	while (readl(base + 0x80) > 48);
-	writel(c, base);
-}
-
-static void uart_puts(char* s)
-{
-	u32 i = strlen(s);
-	while (i--)
-		uart_put(*s++);
-}
-
-static void uart_puts_u32hex(u32 c)
-{
-	char ch = 0;
-	uart_put('0');
-	uart_put('x');
-	ch = (c >> 28) & 0xf;
-	ch = ch > 9 ? 'a' + ch - 10 : '0' + ch;
-	uart_put(ch);
-	ch = (c >> 24) & 0xf;
-	ch = ch > 9 ? 'a' + ch - 10 : '0' + ch;
-	uart_put(ch);
-	ch = (c >> 20) & 0xf;
-	ch = ch > 9 ? 'a' + ch - 10 : '0' + ch;
-	uart_put(ch);
-	ch = (c >> 16) & 0xf;
-	ch = ch > 9 ? 'a' + ch - 10 : '0' + ch;
-	uart_put(ch);
-	ch = (c >> 12) & 0xf;
-	ch = ch > 9 ? 'a' + ch - 10 : '0' + ch;
-	uart_put(ch);
-	ch = (c >> 8) & 0xf;
-	ch = ch > 9 ? 'a' + ch - 10 : '0' + ch;
-	uart_put(ch);
-	ch = (c >> 4) & 0xf;
-	ch = ch > 9 ? 'a' + ch - 10 : '0' + ch;
-	uart_put(ch);
-	ch = (c >> 0) & 0xf;
-	ch = ch > 9 ? 'a' + ch - 10 : '0' + ch;
-	uart_put(ch);
-}
-
-static void dumphex32(char* name, char* base, int len)
-{
-	u32 i;
-
-	printk("dump %s registers:", name);
-	for (i=0; i<len; i+=4) {
-		if (!(i&0xf))
-			printk("\n0x%p : ", base + i);
-		printk("0x%08x ", readl(base + i));
-	}
-	printk("\n");
-}
-
-static void hexdump(char* name, char* base, int len)
-{
-	u32 i;
-
-	printk("%s :", name);
-	for (i=0; i<len; i++) {
-		if (!(i&0x1f))
-			printk("\n0x%p : ", base + i);
-		if (!(i&0xf))
-			printk(" ");
-		printk("%02x ", readb(base + i));
-	}
-	printk("\n");
-}
-#endif
 
 static s32 sw_mci_init_host(struct sunxi_mmc_host* smc_host)
 {
@@ -152,8 +62,8 @@ static s32 sw_mci_init_host(struct sunxi_mmc_host* smc_host)
 	mci_writel(smc_host, REG_GCTRL, rval);
 
 	smc_host->voltage = SDC_WOLTAGE_OFF;
-	if (smc_host->pdata->isiodev)
-		smc_host->io_flag = 1;
+//	if (smc_host->pdata->isiodev)
+//		smc_host->io_flag = 1;
 	return 0;
 }
 
@@ -240,97 +150,97 @@ s32 sw_mci_update_clk(struct sunxi_mmc_host* smc_host)
 	return ret;
 }
 
-/* UHS-I Operation Modes
- * DS		25MHz	12.5MB/s	3.3V
- * HS		50MHz	25MB/s		3.3V
- * SDR12	25MHz	12.5MB/s	1.8V
- * SDR25	50MHz	25MB/s		1.8V
- * SDR50	100MHz	50MB/s		1.8V
- * SDR104	208MHz	104MB/s		1.8V
- * DDR50	50MHz	50MB/s		1.8V
- * MMC Operation Modes
- * DS		26MHz	26MB/s		3/1.8/1.2V
- * HS		52MHz	52MB/s		3/1.8/1.2V
- * HSDDR	52MHz	104MB/s		3/1.8/1.2V
- * HS200	200MHz	200MB/s		1.8/1.2V
- *
- * Spec. Timing
- * SD3.0
- * Fcclk    Tcclk   Fsclk   Tsclk   Tis     Tih     odly  RTis     RTih
- * 400K     2.5us   24M     41ns    5ns     5ns     1     2209ns   41ns
- * 25M      40ns    600M    1.67ns  5ns     5ns     3     14.99ns  5.01ns
- * 50M      20ns    600M    1.67ns  6ns     2ns     3     14.99ns  5.01ns
- * 50MDDR   20ns    600M    1.67ns  6ns     0.8ns   2     6.67ns   3.33ns
- * 104M     9.6ns   600M    1.67ns  3ns     0.8ns   1     7.93ns   1.67ns
- * 208M     4.8ns   600M    1.67ns  1.4ns   0.8ns   1     3.33ns   1.67ns
+/* /\* UHS-I Operation Modes */
+/*  * DS		25MHz	12.5MB/s	3.3V */
+/*  * HS		50MHz	25MB/s		3.3V */
+/*  * SDR12	25MHz	12.5MB/s	1.8V */
+/*  * SDR25	50MHz	25MB/s		1.8V */
+/*  * SDR50	100MHz	50MB/s		1.8V */
+/*  * SDR104	208MHz	104MB/s		1.8V */
+/*  * DDR50	50MHz	50MB/s		1.8V */
+/*  * MMC Operation Modes */
+/*  * DS		26MHz	26MB/s		3/1.8/1.2V */
+/*  * HS		52MHz	52MB/s		3/1.8/1.2V */
+/*  * HSDDR	52MHz	104MB/s		3/1.8/1.2V */
+/*  * HS200	200MHz	200MB/s		1.8/1.2V */
+/*  * */
+/*  * Spec. Timing */
+/*  * SD3.0 */
+/*  * Fcclk    Tcclk   Fsclk   Tsclk   Tis     Tih     odly  RTis     RTih */
+/*  * 400K     2.5us   24M     41ns    5ns     5ns     1     2209ns   41ns */
+/*  * 25M      40ns    600M    1.67ns  5ns     5ns     3     14.99ns  5.01ns */
+/*  * 50M      20ns    600M    1.67ns  6ns     2ns     3     14.99ns  5.01ns */
+/*  * 50MDDR   20ns    600M    1.67ns  6ns     0.8ns   2     6.67ns   3.33ns */
+/*  * 104M     9.6ns   600M    1.67ns  3ns     0.8ns   1     7.93ns   1.67ns */
+/*  * 208M     4.8ns   600M    1.67ns  1.4ns   0.8ns   1     3.33ns   1.67ns */
 
- * 25M      40ns    300M    3.33ns  5ns     5ns     2     13.34ns   6.66ns
- * 50M      20ns    300M    3.33ns  6ns     2ns     2     13.34ns   6.66ns
- * 50MDDR   20ns    300M    3.33ns  6ns     0.8ns   1     6.67ns    3.33ns
- * 104M     9.6ns   300M    3.33ns  3ns     0.8ns   0     7.93ns    1.67ns
- * 208M     4.8ns   300M    3.33ns  1.4ns   0.8ns   0     3.13ns    1.67ns
+/*  * 25M      40ns    300M    3.33ns  5ns     5ns     2     13.34ns   6.66ns */
+/*  * 50M      20ns    300M    3.33ns  6ns     2ns     2     13.34ns   6.66ns */
+/*  * 50MDDR   20ns    300M    3.33ns  6ns     0.8ns   1     6.67ns    3.33ns */
+/*  * 104M     9.6ns   300M    3.33ns  3ns     0.8ns   0     7.93ns    1.67ns */
+/*  * 208M     4.8ns   300M    3.33ns  1.4ns   0.8ns   0     3.13ns    1.67ns */
 
- * eMMC4.5
- * 400K     2.5us   24M     41ns    3ns     3ns     1     2209ns    41ns
- * 25M      40ns    600M    1.67ns  3ns     3ns     3     14.99ns   5.01ns
- * 50M      20ns    600M    1.67ns  3ns     3ns     3     14.99ns   5.01ns
- * 50MDDR   20ns    600M    1.67ns  2.5ns   2.5ns   2     6.67ns    3.33ns
- * 200M     5ns     600M    1.67ns  1.4ns   0.8ns   1     3.33ns    1.67ns
- */
-struct sw_mmc_clk_dly {
-	u32 mode;
-#define MMC_CLK_400K		0
-#define MMC_CLK_25M		1
-#define MMC_CLK_50M		2
-#define MMC_CLK_50MDDR		3
-#define MMC_CLK_50MDDR_8BIT	4
-#define MMC_CLK_100M		5
-#define MMC_CLK_200M		6
-#define MMC_CLK_MOD_NUM		7
-	u32 oclk_dly;
-	u32 sclk_dly;
-} mmc_clk_dly [MMC_CLK_MOD_NUM] = {
-	{MMC_CLK_400K,        0, 7},
-	{MMC_CLK_25M,         0, 5},
-	{MMC_CLK_50M,         3, 5},
-	{MMC_CLK_50MDDR,      2, 4},
-	{MMC_CLK_50MDDR_8BIT, 2, 4},
-	{MMC_CLK_100M,        1, 4},
-	{MMC_CLK_200M,        1, 4},
-};
+/*  * eMMC4.5 */
+/*  * 400K     2.5us   24M     41ns    3ns     3ns     1     2209ns    41ns */
+/*  * 25M      40ns    600M    1.67ns  3ns     3ns     3     14.99ns   5.01ns */
+/*  * 50M      20ns    600M    1.67ns  3ns     3ns     3     14.99ns   5.01ns */
+/*  * 50MDDR   20ns    600M    1.67ns  2.5ns   2.5ns   2     6.67ns    3.33ns */
+/*  * 200M     5ns     600M    1.67ns  1.4ns   0.8ns   1     3.33ns    1.67ns */
+/*  *\/ */
+/* struct sw_mmc_clk_dly { */
+/* 	u32 mode; */
+/* #define MMC_CLK_400K		0 */
+/* #define MMC_CLK_25M		1 */
+/* #define MMC_CLK_50M		2 */
+/* #define MMC_CLK_50MDDR		3 */
+/* #define MMC_CLK_50MDDR_8BIT	4 */
+/* #define MMC_CLK_100M		5 */
+/* #define MMC_CLK_200M		6 */
+/* #define MMC_CLK_MOD_NUM		7 */
+/* 	u32 oclk_dly; */
+/* 	u32 sclk_dly; */
+/* } mmc_clk_dly [MMC_CLK_MOD_NUM] = { */
+/* 	{MMC_CLK_400K,        0, 7}, */
+/* 	{MMC_CLK_25M,         0, 5}, */
+/* 	{MMC_CLK_50M,         3, 5}, */
+/* 	{MMC_CLK_50MDDR,      2, 4}, */
+/* 	{MMC_CLK_50MDDR_8BIT, 2, 4}, */
+/* 	{MMC_CLK_100M,        1, 4}, */
+/* 	{MMC_CLK_200M,        1, 4}, */
+/* }; */
 
-s32 sw_mci_set_clk_dly(struct sunxi_mmc_host* smc_host, u32 oclk_dly, u32 sclk_dly)
-{
-	u32 smc_no = smc_host->pdev->id;
-	void __iomem *mclk_base = __io_address(0x01c20088 + 0x4 * smc_no);
-	u32 rval;
-	unsigned long iflags;
+/* s32 sw_mci_set_clk_dly(struct sunxi_mmc_host* smc_host, u32 oclk_dly, u32 sclk_dly) */
+/* { */
+/* 	u32 smc_no = smc_host->pdev->id; */
+/* 	void __iomem *mclk_base = __io_address(0x01c20088 + 0x4 * smc_no); */
+/* 	u32 rval; */
+/* 	unsigned long iflags; */
 
-	spin_lock_irqsave(&smc_host->lock, iflags);
-	rval = readl(mclk_base);
-	rval &= ~((0x7U << 8) | (0x7U << 20));
-	rval |= (oclk_dly << 8) | (sclk_dly << 20);
-	writel(rval, mclk_base);
-	spin_unlock_irqrestore(&smc_host->lock, iflags);
+/* 	spin_lock_irqsave(&smc_host->lock, iflags); */
+/* 	rval = readl(mclk_base); */
+/* 	rval &= ~((0x7U << 8) | (0x7U << 20)); */
+/* 	rval |= (oclk_dly << 8) | (sclk_dly << 20); */
+/* 	writel(rval, mclk_base); */
+/* 	spin_unlock_irqrestore(&smc_host->lock, iflags); */
 
-	smc_host->oclk_dly = oclk_dly;
-	smc_host->sclk_dly = sclk_dly;
-	SMC_DBG(smc_host, "oclk_dly %d, sclk_dly %d\n", oclk_dly, sclk_dly);
-	return 0;
-}
+/* 	smc_host->oclk_dly = oclk_dly; */
+/* 	smc_host->sclk_dly = sclk_dly; */
+/* 	SMC_DBG(smc_host, "oclk_dly %d, sclk_dly %d\n", oclk_dly, sclk_dly); */
+/* 	return 0; */
+/* } */
 
-s32 sw_mci_oclk_onoff(struct sunxi_mmc_host* smc_host, u32 oclk_en, u32 pwr_save)
-{
-	u32 rval = mci_readl(smc_host, REG_CLKCR);
-	rval &= ~(SDXC_CardClkOn | SDXC_LowPowerOn);
-	if (oclk_en)
-		rval |= SDXC_CardClkOn;
-	if (pwr_save || !smc_host->io_flag)
-		rval |= SDXC_LowPowerOn;
-	mci_writel(smc_host, REG_CLKCR, rval);
-	sw_mci_update_clk(smc_host);
-	return 0;
-}
+/* s32 sw_mci_oclk_onoff(struct sunxi_mmc_host* smc_host, u32 oclk_en, u32 pwr_save) */
+/* { */
+/* 	u32 rval = mci_readl(smc_host, REG_CLKCR); */
+/* 	rval &= ~(SDXC_CardClkOn | SDXC_LowPowerOn); */
+/* 	if (oclk_en) */
+/* 		rval |= SDXC_CardClkOn; */
+/* 	if (pwr_save || !smc_host->io_flag) */
+/* 		rval |= SDXC_LowPowerOn; */
+/* 	mci_writel(smc_host, REG_CLKCR, rval); */
+/* 	sw_mci_update_clk(smc_host); */
+/* 	return 0; */
+/* } */
 
 static void sw_mci_send_cmd(struct sunxi_mmc_host* smc_host, struct mmc_command* cmd)
 {
@@ -351,7 +261,7 @@ static void sw_mci_send_cmd(struct sunxi_mmc_host* smc_host, struct mmc_command*
 		smc_host->voltage_switching = 1;
 		wait = SDC_WAIT_SWITCH1V8;
 		/* switch controller to high power mode */
-		sw_mci_oclk_onoff(smc_host, 1, 0);
+//		sw_mci_oclk_onoff(smc_host, 1, 0);
 	}
 
 	if (cmd->flags & MMC_RSP_PRESENT) {
@@ -499,7 +409,7 @@ static int sw_mci_prepare_dma(struct sunxi_mmc_host* smc_host, struct mmc_data* 
 
 	//write descriptor address to register
 	mci_writel(smc_host, REG_DLBA, smc_host->sg_dma);
-	mci_writel(smc_host, REG_FTRGL, smc_host->pdata->dma_tl);
+//	mci_writel(smc_host, REG_FTRGL, smc_host->pdata->dma_tl);
 
 	return 0;
 }
@@ -664,281 +574,281 @@ out:
 	return ret;
 }
 
-/* static s32 sw_mci_set_clk(struct sunxi_mmc_host* smc_host, u32 clk);
- * set clock and the phase of output/input clock incording on
- * the different timing condition
- */
-static int sw_mci_set_clk(struct sunxi_mmc_host* smc_host, u32 clk)
-{
-	struct clk *sclk = NULL;
-	u32 mod_clk = 0;
-	u32 src_clk = 0;
-	u32 temp;
-	u32 oclk_dly = 2;
-	u32 sclk_dly = 2;
-	struct sw_mmc_clk_dly* dly = NULL;
-	s32 err;
-	u32 rate;
+/* /\* static s32 sw_mci_set_clk(struct sunxi_mmc_host* smc_host, u32 clk); */
+/*  * set clock and the phase of output/input clock incording on */
+/*  * the different timing condition */
+/*  *\/ */
+/* static int sw_mci_set_clk(struct sunxi_mmc_host* smc_host, u32 clk) */
+/* { */
+/* 	struct clk *sclk = NULL; */
+/* 	u32 mod_clk = 0; */
+/* 	u32 src_clk = 0; */
+/* 	u32 temp; */
+/* 	u32 oclk_dly = 2; */
+/* 	u32 sclk_dly = 2; */
+/* 	struct sw_mmc_clk_dly* dly = NULL; */
+/* 	s32 err; */
+/* 	u32 rate; */
 
-	if (clk <= 400000) {
-		mod_clk = smc_host->mod_clk;
-		sclk = clk_get(&smc_host->pdev->dev, MMC_SRCCLK_HOSC);
-	} else {
-		mod_clk = smc_host->mod_clk;
-		sclk = clk_get(&smc_host->pdev->dev, MMC_SRCCLK_PLL6);
-	}
-	if (IS_ERR(sclk)) {
-		SMC_ERR(smc_host, "Error to get source clock for clk %dHz\n", clk);
-		return -1;
-	}
-	err = clk_set_parent(smc_host->mclk, sclk);
-	if (err) {
-		SMC_ERR(smc_host, "sdc%d set mclk parent error\n", smc_host->pdev->id);
-		clk_put(sclk);
-		return -1;
-	}
-	rate = clk_round_rate(smc_host->mclk, mod_clk);
-	err = clk_set_rate(smc_host->mclk, rate);
-	if (err) {
-		SMC_ERR(smc_host, "sdc%d set mclk rate error, rate %dHz\n",
-						smc_host->pdev->id, rate);
-		clk_put(sclk);
-		return -1;
-	}
-	src_clk = clk_get_rate(sclk);
-	clk_put(sclk);
-	smc_host->mod_clk = smc_host->card_clk = rate;
+/* 	if (clk <= 400000) { */
+/* 		mod_clk = smc_host->mod_clk; */
+/* 		sclk = clk_get(&smc_host->pdev->dev, MMC_SRCCLK_HOSC); */
+/* 	} else { */
+/* 		mod_clk = smc_host->mod_clk; */
+/* 		sclk = clk_get(&smc_host->pdev->dev, MMC_SRCCLK_PLL6); */
+/* 	} */
+/* 	if (IS_ERR(sclk)) { */
+/* 		SMC_ERR(smc_host, "Error to get source clock for clk %dHz\n", clk); */
+/* 		return -1; */
+/* 	} */
+/* 	err = clk_set_parent(smc_host->mclk, sclk); */
+/* 	if (err) { */
+/* 		SMC_ERR(smc_host, "sdc%d set mclk parent error\n", smc_host->pdev->id); */
+/* 		clk_put(sclk); */
+/* 		return -1; */
+/* 	} */
+/* 	rate = clk_round_rate(smc_host->mclk, mod_clk); */
+/* 	err = clk_set_rate(smc_host->mclk, rate); */
+/* 	if (err) { */
+/* 		SMC_ERR(smc_host, "sdc%d set mclk rate error, rate %dHz\n", */
+/* 						smc_host->pdev->id, rate); */
+/* 		clk_put(sclk); */
+/* 		return -1; */
+/* 	} */
+/* 	src_clk = clk_get_rate(sclk); */
+/* 	clk_put(sclk); */
+/* 	smc_host->mod_clk = smc_host->card_clk = rate; */
 
-	SMC_DBG(smc_host, "sdc%d set round clock %d\n", smc_host->pdev->id, rate);
-	sw_mci_oclk_onoff(smc_host, 0, 0);
-	/* clear internal divider */
-	temp = mci_readl(smc_host, REG_CLKCR);
-	temp &= ~0xff;
-	mci_writel(smc_host, REG_CLKCR, temp);
-	sw_mci_oclk_onoff(smc_host, 0, 0);
+/* 	SMC_DBG(smc_host, "sdc%d set round clock %d\n", smc_host->pdev->id, rate); */
+/* 	sw_mci_oclk_onoff(smc_host, 0, 0); */
+/* 	/\* clear internal divider *\/ */
+/* 	temp = mci_readl(smc_host, REG_CLKCR); */
+/* 	temp &= ~0xff; */
+/* 	mci_writel(smc_host, REG_CLKCR, temp); */
+/* 	sw_mci_oclk_onoff(smc_host, 0, 0); */
 
-	if (clk <= 400000) {
-		dly = &mmc_clk_dly[MMC_CLK_400K];
-	} else if (clk <= 25000000) {
-		dly = &mmc_clk_dly[MMC_CLK_25M];
-	} else if (clk <= 50000000) {
-		if (smc_host->ddr) {
-			if (smc_host->bus_width == 8)
-				dly = &mmc_clk_dly[MMC_CLK_50MDDR_8BIT];
-			else
-				dly = &mmc_clk_dly[MMC_CLK_50MDDR];
-		} else {
-			dly = &mmc_clk_dly[MMC_CLK_50M];
-		}
-	} else if (clk <= 104000000) {
-		dly = &mmc_clk_dly[MMC_CLK_100M];
-	} else if (clk <= 208000000) {
-		dly = &mmc_clk_dly[MMC_CLK_200M];
-	} else
-		dly = &mmc_clk_dly[MMC_CLK_50M];
-	oclk_dly = dly->oclk_dly;
-	sclk_dly = dly->sclk_dly;
-	if (src_clk >= 300000000 && src_clk <= 400000000) {
-		if (oclk_dly)
-			oclk_dly--;
-		if (sclk_dly)
-			sclk_dly--;
-	}
-	sw_mci_set_clk_dly(smc_host, oclk_dly, sclk_dly);
-	sw_mci_oclk_onoff(smc_host, 1, 0);
-	return 0;
-}
+/* 	if (clk <= 400000) { */
+/* 		dly = &mmc_clk_dly[MMC_CLK_400K]; */
+/* 	} else if (clk <= 25000000) { */
+/* 		dly = &mmc_clk_dly[MMC_CLK_25M]; */
+/* 	} else if (clk <= 50000000) { */
+/* 		if (smc_host->ddr) { */
+/* 			if (smc_host->bus_width == 8) */
+/* 				dly = &mmc_clk_dly[MMC_CLK_50MDDR_8BIT]; */
+/* 			else */
+/* 				dly = &mmc_clk_dly[MMC_CLK_50MDDR]; */
+/* 		} else { */
+/* 			dly = &mmc_clk_dly[MMC_CLK_50M]; */
+/* 		} */
+/* 	} else if (clk <= 104000000) { */
+/* 		dly = &mmc_clk_dly[MMC_CLK_100M]; */
+/* 	} else if (clk <= 208000000) { */
+/* 		dly = &mmc_clk_dly[MMC_CLK_200M]; */
+/* 	} else */
+/* 		dly = &mmc_clk_dly[MMC_CLK_50M]; */
+/* 	oclk_dly = dly->oclk_dly; */
+/* 	sclk_dly = dly->sclk_dly; */
+/* 	if (src_clk >= 300000000 && src_clk <= 400000000) { */
+/* 		if (oclk_dly) */
+/* 			oclk_dly--; */
+/* 		if (sclk_dly) */
+/* 			sclk_dly--; */
+/* 	} */
+/* 	sw_mci_set_clk_dly(smc_host, oclk_dly, sclk_dly); */
+/* 	sw_mci_oclk_onoff(smc_host, 1, 0); */
+/* 	return 0; */
+/* } */
 
-static int sw_mci_request_mmcio(struct sunxi_mmc_host *smc_host)
-{
-	s32 ret;
-	struct sunxi_mmc_platform_data *pdata = smc_host->pdata;
-	u32 smc_no = smc_host->pdev->id;
-	struct gpio_config *gpio;
-	u32 i;
+/* static int sw_mci_request_mmcio(struct sunxi_mmc_host *smc_host) */
+/* { */
+/* 	s32 ret; */
+/* 	struct sunxi_mmc_platform_data *pdata = smc_host->pdata; */
+/* 	u32 smc_no = smc_host->pdev->id; */
+/* 	struct gpio_config *gpio; */
+/* 	u32 i; */
 
-	/* signal io */
-	for (i=0; i<pdata->width+2; i++) {
-		gpio = &pdata->mmcio[i];
-		ret = gpio_request(gpio->gpio, "mmcio");
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d request mmcio%d failed\n", smc_no, i);
-			return -1;
-		}
-		ret = sw_gpio_setpull(gpio->gpio, gpio->pull);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set mmcio%d pull failed\n", smc_no, i);
-			return -1;
-		}
-		ret = sw_gpio_setdrvlevel(gpio->gpio, gpio->drv_level);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set mmcio%d drvlel failed\n", smc_no, i);
-			return -1;
-		}
-		ret = sw_gpio_setcfg(gpio->gpio, gpio->mul_sel);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set mmcio%d mulsel failed\n", smc_no, i);
-			return -1;
-		}
-	}
+/* 	/\* signal io *\/ */
+/* 	for (i=0; i<pdata->width+2; i++) { */
+/* 		gpio = &pdata->mmcio[i]; */
+/* 		ret = gpio_request(gpio->gpio, "mmcio"); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d request mmcio%d failed\n", smc_no, i); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setpull(gpio->gpio, gpio->pull); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set mmcio%d pull failed\n", smc_no, i); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setdrvlevel(gpio->gpio, gpio->drv_level); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set mmcio%d drvlel failed\n", smc_no, i); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setcfg(gpio->gpio, gpio->mul_sel); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set mmcio%d mulsel failed\n", smc_no, i); */
+/* 			return -1; */
+/* 		} */
+/* 	} */
 
-	/* emmc hwrst */
-	if (pdata->has_hwrst) {
-		gpio = &pdata->hwrst;
-		ret = gpio_request(gpio->gpio, "emmc-rst");
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d request io(emmc-rst) failed\n", smc_no);
-			return -1;
-		}
-		ret = sw_gpio_setpull(gpio->gpio, gpio->pull);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set io(emmc-rst) pull failed\n", smc_no);
-			return -1;
-		}
-		ret = sw_gpio_setdrvlevel(gpio->gpio, gpio->drv_level);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set io(emmc-rst) drvlel failed\n", smc_no);
-			return -1;
-		}
-		ret = sw_gpio_setcfg(gpio->gpio, gpio->mul_sel);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set io(emmc-rst) mulsel failed\n", smc_no);
-			return -1;
-		}
-	}
+/* 	/\* emmc hwrst *\/ */
+/* 	if (pdata->has_hwrst) { */
+/* 		gpio = &pdata->hwrst; */
+/* 		ret = gpio_request(gpio->gpio, "emmc-rst"); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d request io(emmc-rst) failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setpull(gpio->gpio, gpio->pull); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set io(emmc-rst) pull failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setdrvlevel(gpio->gpio, gpio->drv_level); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set io(emmc-rst) drvlel failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setcfg(gpio->gpio, gpio->mul_sel); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set io(emmc-rst) mulsel failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 	} */
 
-	/* write protect */
-	if (pdata->wpmode) {
-		gpio = &pdata->wp;
-		ret = gpio_request(gpio->gpio, "wp");
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d request io(wp) failed\n", smc_no);
-			return -1;
-		}
-		ret = sw_gpio_setpull(gpio->gpio, gpio->pull);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set wp pull failed\n", smc_no);
-			return -1;
-		}
-		ret = sw_gpio_setdrvlevel(gpio->gpio, gpio->drv_level);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set wp drvlel failed\n", smc_no);
-			return -1;
-		}
-		ret = sw_gpio_setcfg(gpio->gpio, gpio->mul_sel);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set wp mulsel failed\n", smc_no);
-			return -1;
-		}
-	}
+/* 	/\* write protect *\/ */
+/* 	if (pdata->wpmode) { */
+/* 		gpio = &pdata->wp; */
+/* 		ret = gpio_request(gpio->gpio, "wp"); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d request io(wp) failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setpull(gpio->gpio, gpio->pull); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set wp pull failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setdrvlevel(gpio->gpio, gpio->drv_level); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set wp drvlel failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setcfg(gpio->gpio, gpio->mul_sel); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set wp mulsel failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 	} */
 
-	/* cd mode == gpio polling */
-	if (pdata->cdmode == CARD_DETECT_BY_GPIO_POLL) {
-		gpio = &pdata->cd;
-		ret = gpio_request(gpio->gpio, "cd");
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d request io(cd) failed\n", smc_no);
-			return -1;
-		}
-		ret = sw_gpio_setpull(gpio->gpio, gpio->pull);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set cd pull failed\n", smc_no);
-			return -1;
-		}
-		ret = gpio_direction_input(gpio->gpio);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set cd to input failed\n", smc_no);
-			return -1;
-		}
-	}
+/* 	/\* cd mode == gpio polling *\/ */
+/* 	if (pdata->cdmode == CARD_DETECT_BY_GPIO_POLL) { */
+/* 		gpio = &pdata->cd; */
+/* 		ret = gpio_request(gpio->gpio, "cd"); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d request io(cd) failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setpull(gpio->gpio, gpio->pull); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set cd pull failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = gpio_direction_input(gpio->gpio); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set cd to input failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 	} */
 
-	return 0;
-}
+/* 	return 0; */
+/* } */
 
-static int sw_mci_free_mmcio(struct sunxi_mmc_host *smc_host)
-{
-	u32 smc_no = smc_host->pdev->id;
-	struct sunxi_mmc_platform_data *pdata = smc_host->pdata;
-	struct gpio_config *gpio;
-	u32 i;
-	s32 ret;
+/* static int sw_mci_free_mmcio(struct sunxi_mmc_host *smc_host) */
+/* { */
+/* 	u32 smc_no = smc_host->pdev->id; */
+/* 	struct sunxi_mmc_platform_data *pdata = smc_host->pdata; */
+/* 	struct gpio_config *gpio; */
+/* 	u32 i; */
+/* 	s32 ret; */
 
-	for (i=0; i<pdata->width+2; i++) {
-		gpio = &pdata->mmcio[i];
-		ret = sw_gpio_setcfg(gpio->gpio, 7);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set mmcio%d mulsel failed\n", smc_no, i);
-			return -1;
-		}
-		ret = sw_gpio_setdrvlevel(gpio->gpio, 1);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set mmcio%d drvlel failed\n", smc_no, i);
-			return -1;
-		}
-		ret = sw_gpio_setpull(gpio->gpio, 0);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set mmcio%d pull failed\n", smc_no, i);
-			return -1;
-		}
-		gpio_free(gpio->gpio);
-	}
-	/* emmc hwrst */
-	if (pdata->has_hwrst) {
-		gpio = &pdata->hwrst;
-		ret = sw_gpio_setcfg(gpio->gpio, 7);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set io(emmc-rst) mulsel failed\n", smc_no);
-			return -1;
-		}
-		ret = sw_gpio_setdrvlevel(gpio->gpio, 1);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set io(emmc-rst) drvlel failed\n", smc_no);
-			return -1;
-		}
-		ret = sw_gpio_setpull(gpio->gpio, 0);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set io(emmc-rst) pull failed\n", smc_no);
-			return -1;
-		}
-		gpio_free(gpio->gpio);
-	}
-	/* write protect */
-	if (pdata->wpmode) {
-		gpio = &pdata->wp;
-		ret = sw_gpio_setcfg(gpio->gpio, 7);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set wp mulsel failed\n", smc_no);
-			return -1;
-		}
-		ret = sw_gpio_setdrvlevel(gpio->gpio, 1);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set wp drvlel failed\n", smc_no);
-			return -1;
-		}
-		ret = sw_gpio_setpull(gpio->gpio, 0);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set wp pull failed\n", smc_no);
-			return -1;
-		}
-		gpio_free(gpio->gpio);
-	}
-	/* cd mode == gpio polling */
-	if (pdata->cdmode == CARD_DETECT_BY_GPIO_POLL) {
-		gpio = &pdata->cd;
-		ret = sw_gpio_setcfg(gpio->gpio, 7);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set wp mulsel failed\n", smc_no);
-			return -1;
-		}
-		ret = sw_gpio_setpull(gpio->gpio, gpio->pull);
-		if (ret) {
-			SMC_ERR(smc_host, "sdc%d set cd pull failed\n", smc_no);
-			return -1;
-		}
-		gpio_free(gpio->gpio);
-	}
-	return 0;
-}
+/* 	for (i=0; i<pdata->width+2; i++) { */
+/* 		gpio = &pdata->mmcio[i]; */
+/* 		ret = sw_gpio_setcfg(gpio->gpio, 7); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set mmcio%d mulsel failed\n", smc_no, i); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setdrvlevel(gpio->gpio, 1); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set mmcio%d drvlel failed\n", smc_no, i); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setpull(gpio->gpio, 0); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set mmcio%d pull failed\n", smc_no, i); */
+/* 			return -1; */
+/* 		} */
+/* 		gpio_free(gpio->gpio); */
+/* 	} */
+/* 	/\* emmc hwrst *\/ */
+/* 	if (pdata->has_hwrst) { */
+/* 		gpio = &pdata->hwrst; */
+/* 		ret = sw_gpio_setcfg(gpio->gpio, 7); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set io(emmc-rst) mulsel failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setdrvlevel(gpio->gpio, 1); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set io(emmc-rst) drvlel failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setpull(gpio->gpio, 0); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set io(emmc-rst) pull failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		gpio_free(gpio->gpio); */
+/* 	} */
+/* 	/\* write protect *\/ */
+/* 	if (pdata->wpmode) { */
+/* 		gpio = &pdata->wp; */
+/* 		ret = sw_gpio_setcfg(gpio->gpio, 7); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set wp mulsel failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setdrvlevel(gpio->gpio, 1); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set wp drvlel failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setpull(gpio->gpio, 0); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set wp pull failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		gpio_free(gpio->gpio); */
+/* 	} */
+/* 	/\* cd mode == gpio polling *\/ */
+/* 	if (pdata->cdmode == CARD_DETECT_BY_GPIO_POLL) { */
+/* 		gpio = &pdata->cd; */
+/* 		ret = sw_gpio_setcfg(gpio->gpio, 7); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set wp mulsel failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		ret = sw_gpio_setpull(gpio->gpio, gpio->pull); */
+/* 		if (ret) { */
+/* 			SMC_ERR(smc_host, "sdc%d set cd pull failed\n", smc_no); */
+/* 			return -1; */
+/* 		} */
+/* 		gpio_free(gpio->gpio); */
+/* 	} */
+/* 	return 0; */
+/* } */
 
 static void sw_mci_update_io_driving(struct sunxi_mmc_host *smc_host, s32 driving)
 {
@@ -1785,328 +1695,7 @@ static struct mmc_host_ops sw_mci_ops = {
 	.execute_tuning = sw_mci_execute_tuning,
 };
 
-#ifdef CONFIG_PROC_FS
-#include <linux/proc_fs.h>
-static int sw_mci_proc_drvversion(char *page, char **start, off_t off,
-					int count, int *eof, void *data)
-{
-	char *p = page;
-
-	p += sprintf(p, "%s\n", DRIVER_VERSION);
-	return p - page;
-}
-
-static int sw_mci_proc_hostinfo(char *page, char **start, off_t off,
-					int count, int *eof, void *data)
-{
-	char *p = page;
-	struct sunxi_mmc_host *smc_host = (struct sunxi_mmc_host *)data;
-	struct device* dev = &smc_host->pdev->dev;
-	char* cd_mode[] = {"None", "GPIO Check", "GPIO IRQ", "Always In", "Manual"};
-	char* state[] = {"Idle", "Sending CMD", "CMD Done"};
-	char* vol[] = {"3.3V", "1.8V", "1.2V", "off"};
-	u32 Fmclk_MHz = (smc_host->mod_clk == 24000000 ? 24000000 : 600000000)/1000000;
-	u32 Tmclk_ns = Fmclk_MHz ? 10000/Fmclk_MHz : 0;
-	u32 odly = smc_host->oclk_dly ? Tmclk_ns*smc_host->oclk_dly : Tmclk_ns >> 1;
-	u32 sdly = smc_host->sclk_dly ? Tmclk_ns*smc_host->sclk_dly : Tmclk_ns >> 1;
-
-	p += sprintf(p, " %s Host Info:\n", dev_name(dev));
-	p += sprintf(p, " REG Base  : %p\n", smc_host->reg_base);
-	p += sprintf(p, " DMA Desp  : %p(%08x)\n", smc_host->sg_cpu, smc_host->sg_dma);
-	p += sprintf(p, " Mod Clock : %d\n", smc_host->mod_clk);
-	p += sprintf(p, " Card Clock: %d\n", smc_host->card_clk);
-	p += sprintf(p, " Oclk Delay: %d(%d.%dns)\n", smc_host->oclk_dly, odly/10, odly%10);
-	p += sprintf(p, " Sclk Delay: %d(%d.%dns)\n", smc_host->sclk_dly, sdly/10, odly%10);
-	p += sprintf(p, " Bus Width : %d\n", smc_host->bus_width);
-	p += sprintf(p, " DDR Mode  : %d\n", smc_host->ddr);
-	p += sprintf(p, " Voltage   : %s\n", vol[smc_host->voltage]);
-	p += sprintf(p, " Present   : %d\n", smc_host->present);
-	p += sprintf(p, " CD Mode   : %s\n", cd_mode[smc_host->cd_mode]);
-	p += sprintf(p, " Read Only : %d\n", smc_host->read_only);
-	p += sprintf(p, " State     : %s\n", state[smc_host->state]);
-	p += sprintf(p, " Regulator : %s\n", smc_host->pdata->regulator);
-
-	return p - page;
-}
-
-static int sw_mci_proc_read_regs(char *page, char **start, off_t off,
-				int count, int *eof, void *data)
-{
-	char *p = page;
-	struct sunxi_mmc_host *smc_host = (struct sunxi_mmc_host *)data;
-	u32 i;
-
-	p += sprintf(p, "Dump smc regs:\n");
-	for (i=0; i<0x100; i+=4) {
-		if (!(i&0xf))
-			p += sprintf(p, "\n0x%08x : ", (u32)(smc_host->reg_base + i));
-		p += sprintf(p, "%08x ", readl(smc_host->reg_base + i));
-	}
-	p += sprintf(p, "\n");
-
-	p += sprintf(p, "Dump ccmu regs:\n");
-	for (i=0; i<0x170; i+=4) {
-		if (!(i&0xf))
-			p += sprintf(p, "\n0x%08x : ", IO_ADDRESS(AW_CCM_BASE) + i);
-		p += sprintf(p, "%08x ", readl(IO_ADDRESS(AW_CCM_BASE) + i));
-	}
-	p += sprintf(p, "\n");
-
-	p += sprintf(p, "Dump gpio regs:\n");
-	for (i=0; i<0x120; i+=4) {
-		if (!(i&0xf))
-			p += sprintf(p, "\n0x%08x : ", IO_ADDRESS(AW_PIO_BASE) + i);
-		p += sprintf(p, "%08x ", readl(IO_ADDRESS(AW_PIO_BASE)+ i));
-	}
-	p += sprintf(p, "\n");
-
-	p += sprintf(p, "Dump gpio irqc:\n");
-	for (i=0x200; i<0x300; i+=4) {
-		if (!(i&0xf))
-			p += sprintf(p, "\n0x%08x : ", IO_ADDRESS(AW_PIO_BASE) + i);
-		p += sprintf(p, "%08x ", readl(IO_ADDRESS(AW_PIO_BASE)+ i));
-	}
-	p += sprintf(p, "\n");
-
-	return p - page;
-}
-
-static int sw_mci_proc_read_dbglevel(char *page, char **start, off_t off,
-					int count, int *eof, void *data)
-{
-	char *p = page;
-	struct sunxi_mmc_host *smc_host = (struct sunxi_mmc_host *)data;
-
-	p += sprintf(p, "Debug-Level : 0- msg&err, 1- +info, 2- +dbg, 3- all\n");
-	p += sprintf(p, "current debug-level : %d\n", smc_host->debuglevel);
-	return p - page;
-}
-
-static int sw_mci_proc_write_dbglevel(struct file *file, const char __user *buffer,
-					unsigned long count, void *data)
-{
-	u32 smc_debug;
-	struct sunxi_mmc_host *smc_host = (struct sunxi_mmc_host *)data;
-	smc_debug = simple_strtoul(buffer, NULL, 10);
-
-	smc_host->debuglevel = smc_debug;
-	return sizeof(smc_debug);
-}
-
-static int sw_mci_proc_read_cdmode(char *page, char **start, off_t off,
-					int count, int *eof, void *data)
-{
-	char *p = page;
-	struct sunxi_mmc_host *smc_host = (struct sunxi_mmc_host *)data;
-
-	p += sprintf(p, "card detect mode: %d\n", smc_host->cd_mode);
-	return p - page;
-}
-
-static int sw_mci_proc_write_cdmode(struct file *file, const char __user *buffer,
-					unsigned long count, void *data)
-{
-	u32 cdmode;
-	struct sunxi_mmc_host *smc_host = (struct sunxi_mmc_host *)data;
-	cdmode = simple_strtoul(buffer, NULL, 10);
-
-	smc_host->cd_mode = cdmode;
-	return sizeof(cdmode);
-}
-
-static int sw_mci_proc_read_insert_status(char *page, char **start, off_t off,
-					int coutn, int *eof, void *data)
-{
-	char *p = page;
-	struct sunxi_mmc_host *smc_host = (struct sunxi_mmc_host *)data;
-
-	p += sprintf(p, "Usage: \"echo 1 > insert\" to scan card and "
-			"\"echo 0 > insert\" to remove card\n");
-	if (smc_host->cd_mode != CARD_DETECT_BY_FS)
-		p += sprintf(p, "Sorry, this node if only for manual "
-				"attach mode(cd mode 4)\n");
-
-	p += sprintf(p, "card attach status: %s\n",
-		smc_host->present ? "inserted" : "removed");
-
-
-	return p - page;
-}
-
-static int sw_mci_proc_card_insert_ctrl(struct file *file, const char __user *buffer,
-					unsigned long count, void *data)
-{
-	u32 insert = simple_strtoul(buffer, NULL, 10);
-	struct sunxi_mmc_host *smc_host = (struct sunxi_mmc_host *)data;
-	u32 present = insert ? 1 : 0;
-
-	if (smc_host->present ^ present) {
-		smc_host->present = present;
-		mmc_detect_change(smc_host->mmc, msecs_to_jiffies(300));
-	}
-
-	return sizeof(insert);
-}
-
-static int sw_mci_proc_get_iodriving(char *page, char **start, off_t off,
-						int coutn, int *eof, void *data)
-{
-	char *p = page;
-	struct sunxi_mmc_host *smc_host = (struct sunxi_mmc_host *)data;
-	struct sunxi_mmc_platform_data *pdata = smc_host->pdata;
-	char* mmc_para_io[10] = {"sdc_clk", "sdc_cmd", "sdc_d0", "sdc_d1", "sdc_d2",
-				"sdc_d3", "sdc_d4", "sdc_d5", "sdc_d6", "sdc_d7"};
-	struct gpio_config *gpio;
-	u32 i;
-	u32 level;
-
-	p += sprintf(p, "current io driving:\n");
-	for (i=0; i<pdata->width; i++) {
-		gpio = &pdata->mmcio[i];
-		level = sw_gpio_getdrvlevel(gpio->gpio);
-		p += sprintf(p, "%s : %d\n", mmc_para_io[i], level);
-	}
-
-	return p - page;
-}
-
-static int sw_mci_proc_set_iodriving(struct file *file, const char __user *buffer,
-					unsigned long count, void *data)
-{
-	unsigned long driving = simple_strtoul(buffer, NULL, 16);
-	struct sunxi_mmc_host *smc_host = (struct sunxi_mmc_host *)data;
-	struct sunxi_mmc_platform_data *pdata = smc_host->pdata;
-	u32 clk_drv, cmd_drv, d0_drv, d1_drv, d2_drv, d3_drv, d4_drv, d5_drv, d6_drv, d7_drv;
-
-	clk_drv = 0xf & (driving >> 0);
-	cmd_drv = 0xf & (driving >> 4);
-	d0_drv = 0xf & (driving >> 8);
-	d1_drv = 0xf & (driving >> 12);
-	d2_drv = 0xf & (driving >> 16);
-	d3_drv = 0xf & (driving >> 20);
-	d4_drv = 0xf & (driving >> 8);
-	d5_drv = 0xf & (driving >> 12);
-	d6_drv = 0xf & (driving >> 16);
-	d7_drv = 0xf & (driving >> 20);
-
-	printk("set io driving, clk %x, cmd %x, d0 %x, d1 %x, d2, %x, d3 %x\n",
-		clk_drv, cmd_drv, d0_drv, d1_drv, d2_drv, d3_drv);
-	if (clk_drv > 0 && clk_drv < 4)
-		sw_gpio_setdrvlevel(pdata->mmcio[0].gpio, clk_drv);
-	if (cmd_drv > 0 && cmd_drv < 4)
-		sw_gpio_setdrvlevel(pdata->mmcio[1].gpio, clk_drv);
-	if (d0_drv > 0 && d0_drv < 4)
-		sw_gpio_setdrvlevel(pdata->mmcio[2].gpio, clk_drv);
-	if (pdata->width == 4 || pdata->width == 8) {
-		if (d1_drv > 0 && d1_drv < 4)
-			sw_gpio_setdrvlevel(pdata->mmcio[3].gpio, clk_drv);
-		if (d2_drv > 0 && d2_drv < 4)
-			sw_gpio_setdrvlevel(pdata->mmcio[4].gpio, clk_drv);
-		if (d3_drv > 0 && d3_drv < 4)
-			sw_gpio_setdrvlevel(pdata->mmcio[5].gpio, clk_drv);
-		if (pdata->width == 8) {
-			if (d4_drv > 0 && d4_drv < 4)
-				sw_gpio_setdrvlevel(pdata->mmcio[6].gpio, clk_drv);
-			if (d5_drv > 0 && d5_drv < 4)
-				sw_gpio_setdrvlevel(pdata->mmcio[7].gpio, clk_drv);
-			if (d6_drv > 0 && d6_drv < 4)
-				sw_gpio_setdrvlevel(pdata->mmcio[8].gpio, clk_drv);
-			if (d7_drv > 0 && d7_drv < 4)
-				sw_gpio_setdrvlevel(pdata->mmcio[9].gpio, clk_drv);
-		}
-	}
-
-	return count;
-}
-
-
-void sw_mci_procfs_attach(struct sunxi_mmc_host *smc_host)
-{
-	struct device *dev = &smc_host->pdev->dev;
-	char sw_mci_proc_rootname[32] = {0};
-
-	//make mmc dir in proc fs path
-	snprintf(sw_mci_proc_rootname, sizeof(sw_mci_proc_rootname),
-			"driver/%s", dev_name(dev));
-	smc_host->proc_root = proc_mkdir(sw_mci_proc_rootname, NULL);
-	if (IS_ERR(smc_host->proc_root))
-		SMC_MSG(smc_host, "%s: failed to create procfs \"driver/mmc\".\n", dev_name(dev));
-
-	smc_host->proc_drvver = create_proc_read_entry("drv-version", 0444,
-				smc_host->proc_root, sw_mci_proc_drvversion, NULL);
-	if (IS_ERR(smc_host->proc_root))
-		SMC_MSG(smc_host, "%s: failed to create procfs \"drv-version\".\n", dev_name(dev));
-
-	smc_host->proc_hostinfo = create_proc_read_entry("hostinfo", 0444,
-				smc_host->proc_root, sw_mci_proc_hostinfo, smc_host);
-	if (IS_ERR(smc_host->proc_hostinfo))
-		SMC_MSG(smc_host, "%s: failed to create procfs \"hostinfo\".\n", dev_name(dev));
-
-	smc_host->proc_regs = create_proc_read_entry("register", 0444,
-				smc_host->proc_root, sw_mci_proc_read_regs, smc_host);
-	if (IS_ERR(smc_host->proc_regs))
-		SMC_MSG(smc_host, "%s: failed to create procfs \"hostinfo\".\n", dev_name(dev));
-
-	smc_host->proc_dbglevel = create_proc_entry("debug-level", 0644, smc_host->proc_root);
-	if (IS_ERR(smc_host->proc_dbglevel))
-		SMC_MSG(smc_host, "%s: failed to create procfs \"debug-level\".\n", dev_name(dev));
-
-	smc_host->proc_dbglevel->data = smc_host;
-	smc_host->proc_dbglevel->read_proc = sw_mci_proc_read_dbglevel;
-	smc_host->proc_dbglevel->write_proc = sw_mci_proc_write_dbglevel;
-
-	smc_host->proc_cdmode = create_proc_entry("cdmode", 0644, smc_host->proc_root);
-	if (IS_ERR(smc_host->proc_cdmode))
-		SMC_MSG(smc_host, "%s: failed to create procfs \"cdmode\".\n", dev_name(dev));
-
-	smc_host->proc_cdmode->data = smc_host;
-	smc_host->proc_cdmode->read_proc = sw_mci_proc_read_cdmode;
-	smc_host->proc_cdmode->write_proc = sw_mci_proc_write_cdmode;
-
-	smc_host->proc_insert = create_proc_entry("insert", 0644, smc_host->proc_root);
-	if (IS_ERR(smc_host->proc_insert))
-		SMC_MSG(smc_host, "%s: failed to create procfs \"insert\".\n", dev_name(dev));
-
-	smc_host->proc_insert->data = smc_host;
-	smc_host->proc_insert->read_proc = sw_mci_proc_read_insert_status;
-	smc_host->proc_insert->write_proc = sw_mci_proc_card_insert_ctrl;
-
-	smc_host->proc_iodrive = create_proc_entry("io-drive", 0644, smc_host->proc_root);
-	if (IS_ERR(smc_host->proc_iodrive))
-	{
-		SMC_MSG(smc_host, "%s: failed to create procfs \"io-drive\".\n", dev_name(dev));
-	}
-	smc_host->proc_iodrive->data = smc_host;
-	smc_host->proc_iodrive->read_proc = sw_mci_proc_get_iodriving;
-	smc_host->proc_iodrive->write_proc = sw_mci_proc_set_iodriving;
-
-}
-
-void sw_mci_procfs_remove(struct sunxi_mmc_host *smc_host)
-{
-	struct device *dev = &smc_host->pdev->dev;
-	char sw_mci_proc_rootname[32] = {0};
-
-	snprintf(sw_mci_proc_rootname, sizeof(sw_mci_proc_rootname),
-		"driver/%s", dev_name(dev));
-	remove_proc_entry("io-drive", smc_host->proc_root);
-	remove_proc_entry("insert", smc_host->proc_root);
-	remove_proc_entry("cdmode", smc_host->proc_root);
-	remove_proc_entry("debug-level", smc_host->proc_root);
-	remove_proc_entry("register", smc_host->proc_root);
-	remove_proc_entry("hostinfo", smc_host->proc_root);
-	remove_proc_entry("drv-version", smc_host->proc_root);
-	remove_proc_entry(sw_mci_proc_rootname, NULL);
-}
-
-#else
-
-void sw_mci_procfs_attach(struct sunxi_mmc_host *smc_host) { }
-void sw_mci_procfs_remove(struct sunxi_mmc_host *smc_host) { }
-
-#endif	//PROC_FS
-
-static int __devinit sw_mci_probe(struct platform_device *pdev)
+static int __init sunxi_mci_probe(struct platform_device *pdev)
 {
 	struct sunxi_mmc_host *smc_host = NULL;
 	struct mmc_host	*mmc = NULL;
@@ -2124,8 +1713,8 @@ static int __devinit sw_mci_probe(struct platform_device *pdev)
 	smc_host->mmc	= mmc;
 	smc_host->pdev	= pdev;
 	smc_host->pdata	= pdev->dev.platform_data;
-	smc_host->cd_mode = smc_host->pdata->cdmode;
-	smc_host->debuglevel = CONFIG_MMC_PRE_DBGLVL_SUNXI;
+//	smc_host->cd_mode = smc_host->pdata->cdmode;
+//	smc_host->debuglevel = CONFIG_MMC_PRE_DBGLVL_SUNXI;
 
 	spin_lock_init(&smc_host->lock);
 	tasklet_init(&smc_host->tasklet, sw_mci_tasklet, (unsigned long) smc_host);
@@ -2135,9 +1724,7 @@ static int __devinit sw_mci_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 
-	sw_mci_procfs_attach(smc_host);
-
-	smc_host->irq = SMC_IRQNO(pdev->id);
+//	smc_host->irq = SMC_IRQNO(pdev->id);
 	if (request_irq(smc_host->irq, sw_mci_irq, 0, DRIVER_NAME, smc_host)) {
 		SMC_ERR(smc_host, "Failed to request smc card interrupt.\n");
 		ret = -ENOENT;
@@ -2149,13 +1736,13 @@ static int __devinit sw_mci_probe(struct platform_device *pdev)
 		smc_host->present = 1;
 	} else if (smc_host->cd_mode == CARD_DETECT_BY_GPIO_IRQ) {
 		u32 cd_hdle;
-		cd_hdle = sw_gpio_irq_request(smc_host->pdata->cd.gpio, TRIG_EDGE_DOUBLE,
-					&sw_mci_cd_irq, smc_host);
+//		cd_hdle = sw_gpio_irq_request(smc_host->pdata->cd.gpio, TRIG_EDGE_DOUBLE,
+//					&sw_mci_cd_irq, smc_host);
 		if (!cd_hdle) {
 			SMC_ERR(smc_host, "Failed to get gpio irq for card detection\n");
 		}
 		smc_host->cd_hdle = cd_hdle;
-		smc_host->present = !__gpio_get_value(smc_host->pdata->cd.gpio);
+//		smc_host->present = !__gpio_get_value(smc_host->pdata->cd.gpio);
 	} else if (smc_host->cd_mode == CARD_DETECT_BY_GPIO_POLL) {
 		init_timer(&smc_host->cd_timer);
 		smc_host->cd_timer.expires = jiffies + 1*HZ;
@@ -2166,12 +1753,12 @@ static int __devinit sw_mci_probe(struct platform_device *pdev)
 	}
 
 	mmc->ops        = &sw_mci_ops;
-	mmc->ocr_avail	= smc_host->pdata->ocr_avail;
-	mmc->caps	= smc_host->pdata->caps;
-	mmc->caps2	= smc_host->pdata->caps2;
-	mmc->pm_caps	= MMC_PM_KEEP_POWER|MMC_PM_WAKE_SDIO_IRQ;
-	mmc->f_min	= smc_host->pdata->f_min;
-	mmc->f_max      = smc_host->pdata->f_max;
+//	mmc->ocr_avail	= smc_host->pdata->ocr_avail;
+//	mmc->caps	= smc_host->pdata->caps;
+//	mmc->caps2	= smc_host->pdata->caps2;
+//	mmc->pm_caps	= MMC_PM_KEEP_POWER|MMC_PM_WAKE_SDIO_IRQ;
+//	mmc->f_min	= smc_host->pdata->f_min;
+//	mmc->f_max      = smc_host->pdata->f_max;
 	mmc->max_blk_count	= 8192;
 	mmc->max_blk_size	= 4096;
 	mmc->max_req_size	= mmc->max_blk_size * mmc->max_blk_count;
@@ -2184,7 +1771,6 @@ static int __devinit sw_mci_probe(struct platform_device *pdev)
 		goto probe_free_irq;
 	}
 	platform_set_drvdata(pdev, mmc);
-	sw_host[pdev->id] = smc_host;
 
 	SMC_MSG(smc_host, "sdc%d Probe: base:0x%p irq:%u sg_cpu:%p(%x) ret %d.\n",
 		pdev->id, smc_host->reg_base, smc_host->irq,
@@ -2203,7 +1789,7 @@ probe_out:
 	return ret;
 }
 
-static int __devexit sw_mci_remove(struct platform_device *pdev)
+static int __exit sunxi_mci_remove(struct platform_device *pdev)
 {
 	struct mmc_host    	*mmc  = platform_get_drvdata(pdev);
 	struct sunxi_mmc_host	*smc_host = mmc_priv(mmc);
@@ -2212,346 +1798,31 @@ static int __devexit sw_mci_remove(struct platform_device *pdev)
 
 	sw_mci_exit_host(smc_host);
 
-	sw_mci_procfs_remove(smc_host);
 	mmc_remove_host(mmc);
 
 	tasklet_disable(&smc_host->tasklet);
 	free_irq(smc_host->irq, smc_host);
 	if (smc_host->cd_mode == CARD_DETECT_BY_GPIO_POLL)
 		del_timer(&smc_host->cd_timer);
-	else if (smc_host->cd_mode == CARD_DETECT_BY_GPIO_IRQ)
-		sw_gpio_irq_free(smc_host->cd_hdle);
+//	else if (smc_host->cd_mode == CARD_DETECT_BY_GPIO_IRQ)
+//		sw_gpio_irq_free(smc_host->cd_hdle);
 
 	sw_mci_resource_release(smc_host);
 
 	mmc_free_host(mmc);
-	sw_host[pdev->id] = NULL;
 
 	return 0;
 }
 
-#ifdef CONFIG_PM
-
-void sw_mci_regs_save(struct sunxi_mmc_host* smc_host)
-{
-	struct sunxi_mmc_ctrl_regs* bak_regs = &smc_host->bak_regs;
-
-	bak_regs->gctrl		= mci_readl(smc_host, REG_GCTRL);
-	bak_regs->clkc		= mci_readl(smc_host, REG_CLKCR);
-	bak_regs->timeout	= mci_readl(smc_host, REG_TMOUT);
-	bak_regs->buswid	= mci_readl(smc_host, REG_WIDTH);
-	bak_regs->waterlvl	= mci_readl(smc_host, REG_FTRGL);
-	bak_regs->funcsel	= mci_readl(smc_host, REG_FUNS);
-	bak_regs->debugc	= mci_readl(smc_host, REG_DBGC);
-	bak_regs->idmacc	= mci_readl(smc_host, REG_DMAC);
-}
-
-void sw_mci_regs_restore(struct sunxi_mmc_host* smc_host)
-{
-	struct sunxi_mmc_ctrl_regs* bak_regs = &smc_host->bak_regs;
-
-	mci_writel(smc_host, REG_GCTRL, bak_regs->gctrl   );
-	mci_writel(smc_host, REG_CLKCR, bak_regs->clkc    );
-	mci_writel(smc_host, REG_TMOUT, bak_regs->timeout );
-	mci_writel(smc_host, REG_WIDTH, bak_regs->buswid  );
-	mci_writel(smc_host, REG_FTRGL, bak_regs->waterlvl);
-	mci_writel(smc_host, REG_FUNS , bak_regs->funcsel );
-	mci_writel(smc_host, REG_DBGC , bak_regs->debugc  );
-	mci_writel(smc_host, REG_DMAC , bak_regs->idmacc  );
-}
-
-static int sw_mci_suspend(struct device *dev)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-	struct mmc_host *mmc = platform_get_drvdata(pdev);
-	int ret = 0;
-
-	if (mmc) {
-		ret = mmc_suspend_host(mmc);
-
-		SMC_MSG(NULL, "smc %d suspend\n", pdev->id);
-	}
-
-	return ret;
-}
-
-static int sw_mci_resume(struct device *dev)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-	struct mmc_host *mmc = platform_get_drvdata(pdev);
-	int ret = 0;
-
-	if (mmc) {
-		struct sunxi_mmc_host *smc_host = mmc_priv(mmc);
-		if (smc_host->cd_mode == CARD_DETECT_BY_GPIO_IRQ)
-			sw_mci_cd_cb((unsigned long)smc_host);
-		ret = mmc_resume_host(mmc);
-		SMC_MSG(NULL, "smc %d resume\n", pdev->id);
-	}
-
-	return ret;
-}
-
-static const struct dev_pm_ops sw_mci_pm = {
-	.suspend	= sw_mci_suspend,
-	.resume		= sw_mci_resume,
-};
-#define sw_mci_pm_ops &sw_mci_pm
-
-#else /* CONFIG_PM */
-
-#define sw_mci_pm_ops NULL
-
-#endif /* CONFIG_PM */
-
-static struct sunxi_mmc_platform_data sw_mci_pdata[4] = {
-	[0] = {
-		.ocr_avail = MMC_VDD_28_29 | MMC_VDD_29_30 | MMC_VDD_30_31 | MMC_VDD_31_32
-				| MMC_VDD_32_33 | MMC_VDD_33_34,
-		.caps = MMC_CAP_4_BIT_DATA | MMC_CAP_MMC_HIGHSPEED | MMC_CAP_SD_HIGHSPEED
-			| MMC_CAP_SDIO_IRQ
-			| MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 | MMC_CAP_UHS_SDR50
-			| MMC_CAP_UHS_DDR50
-			| MMC_CAP_SET_XPC_330 | MMC_CAP_DRIVER_TYPE_A,
-		.f_min = 400000,
-		.f_max = 50000000,
-		.f_ddr_max = 47000000,
-		.dma_tl= 0x20070008,
-		.regulator=NULL,
+static struct platform_driver sunxi_mci_driver = {
+	.driver = {
+		.name	= "sunxi-mci",
+		.owner	= THIS_MODULE,
 	},
-	[1] = {
-		.ocr_avail = MMC_VDD_28_29 | MMC_VDD_29_30 | MMC_VDD_30_31 | MMC_VDD_31_32
-				| MMC_VDD_32_33 | MMC_VDD_33_34,
-		.caps = MMC_CAP_4_BIT_DATA | MMC_CAP_MMC_HIGHSPEED | MMC_CAP_SD_HIGHSPEED
-			| MMC_CAP_SDIO_IRQ,
-		.f_min = 400000,
-		.f_max = 50000000,
-		.dma_tl= 0x20070008,
-		.regulator=NULL,
-	},
-	[2] = {
-		.ocr_avail = MMC_VDD_28_29 | MMC_VDD_29_30 | MMC_VDD_30_31 | MMC_VDD_31_32
-				| MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195,
-		.caps = MMC_CAP_4_BIT_DATA | MMC_CAP_NONREMOVABLE
-			| MMC_CAP_MMC_HIGHSPEED | MMC_CAP_SD_HIGHSPEED
-			| MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 | MMC_CAP_UHS_SDR50
-			| MMC_CAP_UHS_DDR50
-			| MMC_CAP_1_8V_DDR
-			#ifndef MMC_FPGA
-			| MMC_CAP_8_BIT_DATA
-			#endif
-			| MMC_CAP_SDIO_IRQ
-			| MMC_CAP_SET_XPC_330 | MMC_CAP_DRIVER_TYPE_A,
-		.caps2 = MMC_CAP2_HS200_1_8V_SDR,
-		.f_min = 400000,
-		.f_max = 120000000,
-		.f_ddr_max = 50000000,
-		.dma_tl= 0x20070008,
-		.regulator=NULL,
-	},
-	[3] = {
-		.ocr_avail = MMC_VDD_28_29 | MMC_VDD_29_30 | MMC_VDD_30_31 | MMC_VDD_31_32
-				| MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195,
-		.caps = MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA | MMC_CAP_NONREMOVABLE
-			| MMC_CAP_MMC_HIGHSPEED | MMC_CAP_SD_HIGHSPEED
-			| MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 | MMC_CAP_UHS_SDR50
-			| MMC_CAP_UHS_DDR50
-			| MMC_CAP_1_8V_DDR
-			| MMC_CAP_8_BIT_DATA
-			| MMC_CAP_SDIO_IRQ
-			| MMC_CAP_SET_XPC_330 | MMC_CAP_DRIVER_TYPE_A,
-		.caps2 = MMC_CAP2_HS200_1_8V_SDR,
-		.f_min = 400000,
-		.f_max = 120000000,
-		.f_ddr_max = 50000000,
-		.dma_tl= MMC3_DMA_TL,
-		.regulator=NULL,
-	},
+	.probe		= sunxi_mci_probe,
+	.remove		= __exit_p(sunxi_mci_remove),
 };
-static struct platform_device sw_mci_device[4] = {
-	[0] = {.name = DRIVER_NAME, .id = 0, .dev.platform_data = &sw_mci_pdata[0]},
-	[1] = {.name = DRIVER_NAME, .id = 1, .dev.platform_data = &sw_mci_pdata[1]},
-	[2] = {.name = DRIVER_NAME, .id = 2, .dev.platform_data = &sw_mci_pdata[2]},
-	[3] = {.name = DRIVER_NAME, .id = 3, .dev.platform_data = &sw_mci_pdata[3]},
-};
-
-static struct platform_driver sw_mci_driver = {
-	.driver.name    = DRIVER_NAME,
-	.driver.owner   = THIS_MODULE,
-	.driver.pm	= sw_mci_pm_ops,
-	.probe          = sw_mci_probe,
-	.remove         = __devexit_p(sw_mci_remove),
-};
-
-static int sw_mci_get_devinfo(void)
-{
-	u32 i, j;
-	char mmc_para[16] = {0};
-	struct sunxi_mmc_platform_data* mmcinfo;
-	char* mmc_para_io[10] = {"sdc_clk", "sdc_cmd", "sdc_d0", "sdc_d1", "sdc_d2",
-				"sdc_d3", "sdc_d4", "sdc_d5", "sdc_d6", "sdc_d7"};
-	script_item_u val;
-	script_item_value_type_e type;
-
-	for (i=0; i<4; i++) {
-		mmcinfo = &sw_mci_pdata[i];
-		sprintf(mmc_para, "mmc%d_para", i);
-		/* get used information */
-		type = script_get_item(mmc_para, "sdc_used", &val);
-		if (type != SCIRPT_ITEM_VALUE_TYPE_INT) {
-			SMC_MSG(NULL, "get mmc%d's usedcfg failed\n", i);
-			goto fail;
-		}
-		mmcinfo->used = val.val;
-		if (!mmcinfo->used)
-			continue;
-		/* get cdmode information */
-		type = script_get_item(mmc_para, "sdc_detmode", &val);
-		if (type != SCIRPT_ITEM_VALUE_TYPE_INT) {
-			SMC_MSG(NULL, "get mmc%d's detmode failed\n", i);
-			goto fail;
-		}
-		mmcinfo->cdmode = val.val;
-		if (mmcinfo->cdmode == CARD_DETECT_BY_GPIO_POLL ||
-			mmcinfo->cdmode == CARD_DETECT_BY_GPIO_IRQ) {
-			type = script_get_item(mmc_para, "sdc_det", &val);
-			if (type != SCIRPT_ITEM_VALUE_TYPE_PIO) {
-				SMC_MSG(NULL, "get mmc%d's IO(sdc_cd) failed\n", i);
-			} else {
-				mmcinfo->cd = val.gpio;
-			}
-		}
-		/* get buswidth information */
-		type = script_get_item(mmc_para, "sdc_buswidth", &val);
-		if (type != SCIRPT_ITEM_VALUE_TYPE_INT) {
-			SMC_MSG(NULL, "get mmc%d's buswidth failed\n", i);
-			goto fail;
-		}
-		mmcinfo->width = val.val;
-		/* get mmc IOs information */
-		for (j=0; j<mmcinfo->width+2; j++) {
-			type = script_get_item(mmc_para, mmc_para_io[j], &val);
-			if (type != SCIRPT_ITEM_VALUE_TYPE_PIO) {
-				SMC_MSG(NULL, "get mmc%d's IO(%s) failed\n", j, mmc_para_io[j]);
-				goto fail;
-			}
-			mmcinfo->mmcio[j] = val.gpio;
-		}
-		/* get wpmode information */
-		type = script_get_item(mmc_para, "sdc_use_wp", &val);
-		if (type != SCIRPT_ITEM_VALUE_TYPE_INT) {
-			SMC_MSG(NULL, "get mmc%d's wpmode failed\n", i);
-			goto fail;
-		}
-		mmcinfo->wpmode = val.val;
-		if (mmcinfo->wpmode) {
-			/* if wpmode==1 but cann't get the wp IO, we assume there is no
-			   write protect detection */
-			type = script_get_item(mmc_para, "sdc_wp", &val);
-			if (type != SCIRPT_ITEM_VALUE_TYPE_PIO) {
-				SMC_MSG(NULL, "get mmc%d's IO(sdc_wp) failed\n", i);
-				mmcinfo->wpmode = 0;
-			} else {
-				mmcinfo->wp = val.gpio;
-			}
-		}
-		/* get emmc-rst information */
-		type = script_get_item(mmc_para, "emmc_rst", &val);
-		if (type != SCIRPT_ITEM_VALUE_TYPE_PIO) {
-			mmcinfo->has_hwrst = 0;
-		} else {
-			mmcinfo->has_hwrst = 1;
-			mmcinfo->hwrst = val.gpio;
-		}
-		/* get sdio information */
-		type = script_get_item(mmc_para, "sdc_isio", &val);
-		if (type != SCIRPT_ITEM_VALUE_TYPE_INT) {
-			SMC_MSG(NULL, "get mmc%d's isio? failed\n", i);
-			goto fail;
-		}
-		mmcinfo->isiodev = val.val;
-
-		/* get regulator information */
-		type = script_get_item(mmc_para, "sdc_regulator", &val);
-		if (type != SCIRPT_ITEM_VALUE_TYPE_STR) {
-			SMC_MSG(NULL, "get mmc%d's sdc_regulator failed\n", i);
-			mmcinfo->regulator = NULL;
-		} else {
-			if (!strcmp(val.str, "none")) {
-				mmcinfo->regulator = NULL;
-				/* If here found that no regulator can be used for this card,
-				   we clear all of the UHS features support */
-				mmcinfo->caps &= ~(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25
-						| MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50);
-			} else
-				mmcinfo->regulator = val.str;
-		}
-	}
-
-	return 0;
-fail:
-	return -1;
-}
-
-static int __init sw_mci_init(void)
-{
-	int i;
-	int sdc_used = 0;
-	int boot_card = 0;
-	int io_used = 0;
-	struct sunxi_mmc_platform_data* mmcinfo;
-
-	SMC_MSG(NULL, "sw_mci_init\n");
-	/* get devices information from sys_config1.fex */
-	if (sw_mci_get_devinfo()) {
-		SMC_MSG(NULL, "parse sys_cofnig.fex info failed\n");
-		return 0;
-	}
-
-	/*
-	 * Here we check whether there is a boot card. If the boot card exists,
-	 * we register it firstly to make it be associatiated with the device
-	 * node 'mmcblk0'. Then the applicantions of Android can fix the boot,
-	 * system, data patitions on mmcblk0p1, mmcblk0p2... etc.
-	 */
-	for (i=0; i<4; i++) {
-		mmcinfo = &sw_mci_pdata[i];
-		if (mmcinfo->used) {
-			sdc_used |= 1 << i;
-			if (mmcinfo->cdmode == CARD_ALWAYS_PRESENT)
-				boot_card |= 1 << i;
-			if (mmcinfo->isiodev)
-				io_used |= 1 << i;
-		}
-	}
-
-	SMC_MSG(NULL, "MMC host used card: 0x%x, boot card: 0x%x, io_card %d\n",
-					sdc_used, boot_card, io_used);
-	/* register boot card firstly */
-	for (i=0; i<4; i++) {
-		if (boot_card & (1 << i))
-			platform_device_register(&sw_mci_device[i]);
-	}
-	/* register other cards */
-	for (i=0; i<4; i++) {
-		if (boot_card & (1 << i))
-			continue;
-		if (sdc_used & (1 << i))
-			platform_device_register(&sw_mci_device[i]);
-	}
-
-	return platform_driver_register(&sw_mci_driver);
-}
-
-static void __exit sw_mci_exit(void)
-{
-	SMC_MSG(NULL, "sw_mci_exit\n");
-	platform_driver_unregister(&sw_mci_driver);
-}
-
-
-module_init(sw_mci_init);
-module_exit(sw_mci_exit);
+module_platform_driver(sunxi_mci_driver);
 
 MODULE_DESCRIPTION("Winner's SD/MMC Card Controller Driver");
 MODULE_LICENSE("GPL v2");
