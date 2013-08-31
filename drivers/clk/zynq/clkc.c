@@ -71,6 +71,7 @@ static DEFINE_SPINLOCK(armpll_lock);
 static DEFINE_SPINLOCK(ddrpll_lock);
 static DEFINE_SPINLOCK(iopll_lock);
 static DEFINE_SPINLOCK(armclk_lock);
+static DEFINE_SPINLOCK(swdtclk_lock);
 static DEFINE_SPINLOCK(ddrclk_lock);
 static DEFINE_SPINLOCK(dciclk_lock);
 static DEFINE_SPINLOCK(gem0clk_lock);
