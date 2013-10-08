@@ -1,5 +1,5 @@
 /*
- * Allwinner A31 Reset Controller driver
+ * Allwinner SoCs Reset Controller driver
  *
  * Copyright 2013 Maxime Ripard
  *
@@ -21,16 +21,16 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 
-struct sun6i_reset_data {
+struct sunxi_reset_data {
 	void __iomem				*membase;
 	struct reset_controller_dev		rcdev;
 };
 
-static int sun6i_reset_assert(struct reset_controller_dev *rcdev,
-			     unsigned long id)
+static int sunxi_reset_assert(struct reset_controller_dev *rcdev,
+			      unsigned long id)
 {
-	struct sun6i_reset_data *data = container_of(rcdev,
-						     struct sun6i_reset_data,
+	struct sunxi_reset_data *data = container_of(rcdev,
+						     struct sunxi_reset_data,
 						     rcdev);
 	int bank = id / BITS_PER_LONG;
 	int offset = id % BITS_PER_LONG;
@@ -41,11 +41,11 @@ static int sun6i_reset_assert(struct reset_controller_dev *rcdev,
 	return 0;
 }
 
-static int sun6i_reset_deassert(struct reset_controller_dev *rcdev,
-			       unsigned long id)
+static int sunxi_reset_deassert(struct reset_controller_dev *rcdev,
+				unsigned long id)
 {
-	struct sun6i_reset_data *data = container_of(rcdev,
-						     struct sun6i_reset_data,
+	struct sunxi_reset_data *data = container_of(rcdev,
+						     struct sunxi_reset_data,
 						     rcdev);
 	int bank = id / BITS_PER_LONG;
 	int offset = id % BITS_PER_LONG;
@@ -56,14 +56,14 @@ static int sun6i_reset_deassert(struct reset_controller_dev *rcdev,
 	return 0;
 }
 
-static struct reset_control_ops sun6i_reset_ops = {
-	.assert		= sun6i_reset_assert,
-	.deassert	= sun6i_reset_deassert,
+static struct reset_control_ops sunxi_reset_ops = {
+	.assert		= sunxi_reset_assert,
+	.deassert	= sunxi_reset_deassert,
 };
 
-int __init sun6i_reset_init(struct device_node *np)
+static int sunxi_reset_init(struct device_node *np)
 {
-	struct sun6i_reset_data *data;
+	struct sunxi_reset_data *data;
 	struct resource res;
 	resource_size_t size;
 	int ret;
@@ -90,7 +90,7 @@ int __init sun6i_reset_init(struct device_node *np)
 
 	data->rcdev.owner = THIS_MODULE;
 	data->rcdev.nr_resets = size * 32;
-	data->rcdev.ops = &sun6i_reset_ops;
+	data->rcdev.ops = &sunxi_reset_ops;
 	data->rcdev.of_node = np;
 	reset_controller_register(&data->rcdev);
 
@@ -99,4 +99,63 @@ int __init sun6i_reset_init(struct device_node *np)
 err_alloc:
 	kfree(data);
 	return ret;
+};
+
+/*
+ * These are the reset controller we need to initialize early on in
+ * our system, before we can even think of using a regular device
+ * driver for it.
+ */
+static const struct of_device_id sunxi_early_reset_dt_ids[] __initdata = {
+	{ .compatible = "allwinner,sun6i-a31-ahb1-reset", },
+	{ /* sentinel */ },
+};
+
+void __init sun6i_reset_init(void)
+{
+	struct device_node *np;
+
+	for_each_matching_node(np, sunxi_early_reset_dt_ids)
+		sunxi_reset_init(np);
 }
+
+/*
+ * And these are the controllers we can register through the regular
+ * device model.
+ */
+static const struct of_device_id sunxi_reset_dt_ids[] = {
+	 { .compatible = "allwinner,sun4i-clock-reset", },
+	 { /* sentinel */ },
+};
+MODULE_DEVICE_TABLE(of, sunxi_reset_dt_ids);
+
+static int sunxi_reset_probe(struct platform_device *pdev)
+{
+	return sunxi_reset_init(pdev->dev.of_node);
+}
+
+static int sunxi_reset_remove(struct platform_device *pdev)
+{
+	struct sunxi_reset_data *data = platform_get_drvdata(pdev);
+
+	reset_controller_unregister(&data->rcdev);
+	iounmap(data->membase);
+	kfree(data);
+
+	return 0;
+}
+
+static struct platform_driver sunxi_reset_driver = {
+	.probe	= sunxi_reset_probe,
+	.remove	= sunxi_reset_remove,
+	.driver = {
+		.name		= "sunxi-reset",
+		.owner		= THIS_MODULE,
+		.of_match_table	= sunxi_reset_dt_ids,
+	},
+};
+module_platform_driver(sunxi_reset_driver);
+
+MODULE_AUTHOR("Maxime Ripard <maxime.ripard@free-electrons.com");
+MODULE_DESCRIPTION("Allwinner SoCs Reset Controller Driver");
+MODULE_LICENSE("GPL");
