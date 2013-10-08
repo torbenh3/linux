@@ -142,23 +142,11 @@ static const char * const sun6i_board_dt_compat[] = {
 	NULL,
 };
 
-static const struct of_device_id sun6i_reset_dt_ids[] = {
-	{ .compatible = "allwinner,sun6i-a31-ahb1-reset", },
-	{ .compatible = "allwinner,sun6i-a31-apb1-reset", },
-	{ .compatible = "allwinner,sun6i-a31-apb2-reset", },
-	{ /* sentinel */ }
-};
-
-extern void __init sun6i_reset_init(struct device_node *np);
+extern void __init sun6i_reset_init(void);
 static void __init sun6i_timer_init(void)
 {
-	struct device_node *np;
-
 	sunxi_init_clocks();
-
-	for_each_matching_node(np, sun6i_reset_dt_ids)
-		sun6i_reset_init(np);
-
+	sun6i_reset_init();
 	clocksource_of_init();
 }
 
