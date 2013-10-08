@@ -305,7 +305,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			clocks = <&apb2_gates 21>;
-			resets = <&apb2rst 21>;
+			resets = <&apb2_rst 21>;
 			status = "disabled";
 		};
 
