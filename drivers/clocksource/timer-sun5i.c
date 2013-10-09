@@ -34,6 +34,8 @@
 #define TIMER_CNTVAL_LO_REG(val)	(0x20 * (val) + 0x1c)
 #define TIMER_CNTVAL_HI_REG(val)	(0x20 * (val) + 0x20)
 
+#define TIMER_SYNC_TICKS	3
+
 static void __iomem *timer_base;
 static u32 ticks_per_jiffy;
 
@@ -47,7 +49,7 @@ static void sun5i_clkevt_sync(void)
 {
 	u32 old = readl(timer_base + TIMER_CNTVAL_LO_REG(1));
 
-	while ((old - readl(timer_base + TIMER_CNTVAL_LO_REG(1))) < 3)
+	while ((old - readl(timer_base + TIMER_CNTVAL_LO_REG(1))) < TIMER_SYNC_TICKS)
 		cpu_relax();
 }
 
@@ -102,7 +104,7 @@ static int sun5i_clkevt_next_event(unsigned long evt,
 				   struct clock_event_device *unused)
 {
 	sun5i_clkevt_time_stop(0);
-	sun5i_clkevt_time_setup(0, evt);
+	sun5i_clkevt_time_setup(0, evt - TIMER_SYNC_TICKS);
 	sun5i_clkevt_time_start(0, false);
 
 	return 0;
@@ -129,7 +131,7 @@ static irqreturn_t sun5i_timer_interrupt(int irq, void *dev_id)
 
 static struct irqaction sun5i_timer_irq = {
 	.name = "sun5i_timer0",
-	.flags = IRQF_DISABLED | IRQF_TIMER | IRQF_IRQPOLL,
+	.flags = IRQF_TIMER | IRQF_IRQPOLL,
 	.handler = sun5i_timer_interrupt,
 	.dev_id = &sun5i_clockevent,
 };
@@ -178,10 +180,10 @@ static void __init sun5i_timer_init(struct device_node *node)
 	val = readl(timer_base + TIMER_IRQ_EN_REG);
 	writel(val | TIMER_IRQ_EN(0), timer_base + TIMER_IRQ_EN_REG);
 
-	sun5i_clockevent.cpumask = cpumask_of(0);
+	sun5i_clockevent.cpumask = cpu_possible_mask;
 
-	clockevents_config_and_register(&sun5i_clockevent, rate, 0x1,
-					0xffffffff);
+	clockevents_config_and_register(&sun5i_clockevent, rate,
+					TIMER_SYNC_TICKS, 0xffffffff);
 }
 CLOCKSOURCE_OF_DECLARE(sun5i_a13, "allwinner,sun5i-a13-hstimer",
 		       sun5i_timer_init);
