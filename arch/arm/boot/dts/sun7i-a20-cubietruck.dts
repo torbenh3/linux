@@ -33,6 +33,14 @@
 			pinctrl-0 = <&uart0_pins_a>;
 			status = "okay";
 		};
+
+		gmac: gmac@01c50000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&gmac_pins_a>;
+			phy-mode = "rgmii";
+			phy-addr = <0xffffffff>; /* probe for phy addr */
+			status = "okay";
+		};
 	};
 
 	leds {
