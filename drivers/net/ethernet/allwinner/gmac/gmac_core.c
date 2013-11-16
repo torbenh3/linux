@@ -50,7 +50,7 @@
 #include "gmac_desc.h"
 #include "gmac_ethtool.h"
 
-#define GMAC_DEBUG
+#undef GMAC_DEBUG
 #ifdef GMAC_DEBUG
 #define DBG(nlevel, klevel, fmt, args...) \
 		((void)(netif_msg_##nlevel(priv) && \
@@ -60,7 +60,6 @@
 #endif
 
 #undef RX_DEBUG
-#define RX_DEBUG
 #ifdef RX_DEBUG
 #define RX_DBG(fmt, args...)  printk(fmt, ## args)
 #else
@@ -68,7 +67,6 @@
 #endif
 
 #undef XMIT_DEBUG
-#define XMIT_DEBUG
 #ifdef XMIT_DEBUG
 #define TX_DBG(fmt, args...)  printk(fmt, ## args)
 #else
@@ -88,7 +86,7 @@ static int watchdog = TX_TIMEO;
 module_param(watchdog, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(watchdog, "Transmit timeout in milliseconds");
 
-static int debug = 13;		/* -1: default, 0: no output, 16:  all */
+static int debug = 0;		/* -1: default, 0: no output, 16:  all */
 module_param(debug, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(debug, "Message Level (0: no output, 16: all)");
 
@@ -600,7 +598,6 @@ static void gmac_tx(struct gmac_priv *priv)
 {
 	unsigned int txsize = priv->dma_tx_size;
 
-	printk( "gmac tx\n" );
 	spin_lock(&priv->tx_lock);
 
 	while (priv->dirty_tx != priv->cur_tx) {

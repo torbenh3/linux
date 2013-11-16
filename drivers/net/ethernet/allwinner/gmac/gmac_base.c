@@ -24,7 +24,7 @@
 #include "sunxi_gmac.h"
 #include "gmac_desc.h"
 
-#define GMAC_BASE_DEBUG
+#undef GMAC_BASE_DEBUG
 #ifdef GMAC_BASE_DEBUG
 #define BASE_DBG(fmt, args...)  printk(fmt, ## args)
 #else
