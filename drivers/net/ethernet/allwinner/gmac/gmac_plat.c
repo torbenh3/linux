@@ -32,166 +32,79 @@
 #include <linux/clk.h>
 
 #include <linux/gpio.h>
+#include <linux/of.h>
+#include <linux/of_net.h>
 //#include <mach/irqs.h>
 //#include <mach/clock.h>
 
 #include "sunxi_gmac.h"
 
-static int gmac_system_init(struct gmac_priv *priv)
-{
-  
-	int ret = 0;
+static int gmac_pltfr_remove(struct platform_device *pdev);
 
-#ifndef CONFIG_GMAC_SCRIPT_SYS
-	if(priv->gpiobase){
-		writel(0x55555555, priv->gpiobase + PA_CFG0);
-		writel(0x50555505, priv->gpiobase + PA_CFG1);
-		writel(0x00000005, priv->gpiobase + PA_CFG2);
+#ifdef CONFIG_OF
+static int gmac_probe_config_dt(struct platform_device *pdev,
+				  struct gmac_plat_data *plat,
+				  const char **mac)
+{
+	struct device_node *np = pdev->dev.of_node;
+
+	if (!np)
+		return -ENODEV;
+
+	*mac = of_get_mac_address(np);
+	plat->phy_interface = of_get_phy_mode(np);
+
+	plat->bus_id = of_alias_get_id(np, "ethernet");
+	if (plat->bus_id < 0)
+		plat->bus_id = 0;
+
+	if (of_property_read_u32(np, "snps,phy-addr", &plat->phy_addr))
+		plat->phy_addr = -1;
+
+	plat->mdio_bus_data = devm_kzalloc(&pdev->dev,
+					   sizeof(struct gmac_mdio_bus_data),
+					   GFP_KERNEL);
+
+	if (of_device_is_compatible(np, "allwinner,gmac")) {
+		plat->clk_csr = 2;
+		plat->tx_coe = 1;
+		plat->force_sf_dma_mode = 1;
+
 	}
-#else
-	priv->gpio_handle = gpio_request_ex("gmac_para", NULL);
-	if(!priv->gpio_handle) {
-		pr_warning("twi0 request gpio fail!\n");
-		ret = -1;
+
+	if (of_find_property(np, "snps,pbl", NULL)) {
+		of_property_read_u32(np, "snps,pbl", &plat->pbl);
 	}
-#endif
-	return ret;
+
+
+	return 0;
 }
+#else
+static int gmac_probe_config_dt(struct platform_device *pdev,
+				  struct gmac_plat_data *plat,
+				  const char **mac)
+{
+	return -ENOSYS;
+}
+#endif /* CONFIG_OF */
 
 static int gmac_sys_request(struct platform_device *pdev, struct gmac_priv *priv)
 {
-	int ret = 0;
-#ifndef CONFIG_GMAC_CLK_SYS
-	struct resource *io_clk; 
-#endif
-#ifndef CONFIG_GMAC_SCRIPT_SYS
-	struct resource *io_gpio;
-#endif
 	struct resource *clk_reg;
 
-	clk_reg = platform_get_resource(pdev, IORESOURCE_MEM, 3);
-	if (unlikely(!clk_reg)){
-		ret = -ENODEV;
-		printk(KERN_ERR "ERROR: Get gmac clk reg is failed!\n");
-		goto out;
-	}
+	clk_reg = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	priv->gmac_clk_reg = devm_ioremap_resource(&pdev->dev, clk_reg);
+	if (IS_ERR(priv->gmac_clk_reg))
+		return PTR_ERR(priv->gmac_clk_reg);
 
-	priv->gmac_clk_reg = ioremap(clk_reg->start, resource_size(clk_reg));
-	if (unlikely(!priv->gmac_clk_reg)) {
-		printk(KERN_ERR "%s: ERROR: memory mapping failed\n", __func__);
-		ret = -ENOMEM;
-		goto out;
-	}
-
-#ifndef CONFIG_GMAC_CLK_SYS
-	io_clk = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (unlikely(!io_clk)){
-		ret = -ENODEV;
-		goto out_clk_reg;
-	}
-
-#if 0
-	if (!request_mem_region(io_clk->start, resource_size(io_clk), pdev->name)) {
-		printk(KERN_ERR "%s: ERROR: memory allocation failed\n"
-		       "cannot get the I/O addr 0x%x\n",
-		       __func__, (unsigned int)io_clk->start);
-		ret = -EBUSY;
-		goto out_clk_reg;
-	}
-#endif
-
-	priv->clkbase = ioremap(io_clk->start, resource_size(io_clk));
-	if (unlikely(!priv->clkbase)) {
-		printk(KERN_ERR "%s: ERROR: memory mapping failed\n", __func__);
-		ret = -ENOMEM;
-		goto out_release_clk;
-	}
-#else
-	priv->gmac_ahb_clk = clk_get(&pdev->dev, CLK_AHB_GMAC);
+	priv->gmac_ahb_clk = devm_clk_get(&pdev->dev, "stmmaceth" );
 	if (unlikely(!priv->gmac_ahb_clk || IS_ERR(priv->gmac_ahb_clk))) {
 		printk(KERN_ERR "ERROR: Get clock is failed!\n");
-		ret = -1;
-		goto out;
-	}
-    /*
-	priv->gmac_mod_clk = clk_get(&pdev->dev, CLK_MOD_GMAC);
-	if (unlikely(!priv->gmac_mod_clk || IS_ERR(priv->gmac_mod_clk))) {
-		printk(KERN_ERR "ERROR: Get mod gmac is failed!\n");
-		ret = -1;
-		goto out;
-	}
-    */
-#endif
-
-#ifndef CONFIG_GMAC_SCRIPT_SYS
-	io_gpio = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-	if (unlikely(!io_gpio)){
-		ret = -ENODEV;
-		goto out_unmap_clk;
+		return PTR_ERR(priv->gmac_ahb_clk);
 	}
 
-	if (!request_mem_region(io_gpio->start, resource_size(io_gpio), pdev->name)) {
-		printk(KERN_ERR "%s: ERROR: memory allocation failed"
-		       "cannot get the I/O addr 0x%x\n",
-		       __func__, (unsigned int)io_gpio->start);
-		ret = -EBUSY;
-		goto out_unmap_clk;
-	}
-
-	priv->gpiobase = ioremap(io_gpio->start, resource_size(io_gpio));
-	if (unlikely(!priv->gpiobase)) {
-		printk(KERN_ERR "%s: ERROR: memory mapping failed", __func__);
-		ret = -ENOMEM;
-		goto out_release_gpio;
-	}
-#endif
 
 	return 0;
-
-#ifndef CONFIG_GMAC_SCRIPT_SYS
-out_release_gpio:
-	release_mem_region(io_gpio->start, resource_size(io_gpio));
-out_unmap_clk:
-#endif
-#ifndef CONFIG_GMAC_CLK_SYS
-	iounmap(priv->clkbase);
-out_release_clk:
-	release_mem_region(io_clk->start, resource_size(io_clk));
-out_clk_reg:
-	iounmap(priv->gmac_clk_reg);
-#endif
-out:
-	return ret;
-}
-
-static void gmac_sys_release(struct platform_device *pdev)
-{
-	struct net_device *ndev = platform_get_drvdata(pdev);
-	struct gmac_priv *priv = netdev_priv(ndev);
-#if !defined(CONFIG_GMAC_SCRIPT_SYS) || !defined(CONFIG_GMAC_CLK_SYS)
-	struct resource *res;
-#endif
-
-#ifndef CONFIG_GMAC_SCRIPT_SYS
-	iounmap((void *)priv->gpiobase);
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	release_mem_region(res->start, resource_size(res));
-#else
-	gpio_release(priv->gpio_handle, 0);
-#endif
-
-	iounmap(priv->gmac_clk_reg);
-
-#ifndef CONFIG_GMAC_CLK_SYS
-	iounmap((void *)priv->clkbase);
-#else
-	if (priv->gmac_ahb_clk)
-		clk_put(priv->gmac_ahb_clk);
-/*
-    if (priv->gmac_mod_clk)
-		clk_put(priv->gmac_mod_clk);
-*/
-#endif
 }
 
 static int gmac_pltfr_probe(struct platform_device *pdev)
@@ -199,80 +112,68 @@ static int gmac_pltfr_probe(struct platform_device *pdev)
 	int ret = 0;
 	int irq = 0;
 	struct resource *io_gmac;
+	struct device *dev = &pdev->dev;
 	void __iomem *addr = NULL;
 	struct gmac_priv *priv = NULL;
+	struct gmac_plat_data *plat_dat = NULL;
+	const char *mac = NULL;
 
 	io_gmac = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!io_gmac)
-		return -ENODEV;
+	addr = devm_ioremap_resource(dev, io_gmac);
+	if (IS_ERR(addr))
+		return PTR_ERR(addr);
 
-	if (!request_mem_region(io_gmac->start, resource_size(io_gmac), pdev->name)) {
-		pr_err("%s: ERROR: memory allocation failed"
-		       "cannot get the I/O addr 0x%x\n",
-		       __func__, (unsigned int)io_gmac->start);
-		return -EBUSY;
-	}
+	plat_dat = dev_get_platdata(&pdev->dev);
+	if (pdev->dev.of_node) {
+		if (!plat_dat)
+			plat_dat = devm_kzalloc(&pdev->dev,
+					sizeof(struct gmac_plat_data),
+					GFP_KERNEL);
+		if (!plat_dat) {
+			pr_err("%s: ERROR: no memory", __func__);
+			return  -ENOMEM;
+		}
 
-	addr = ioremap(io_gmac->start, resource_size(io_gmac));
-	if (!addr) {
-		pr_err("%s: ERROR: memory mapping failed", __func__);
-		ret = -ENOMEM;
-		goto out_release_region;
+		ret = gmac_probe_config_dt(pdev, plat_dat, &mac);
+		if (ret) {
+			pr_err("%s: main dt probe failed", __func__);
+			return ret;
+		}
+
+		dev->platform_data = plat_dat;
 	}
 
 	/* Get the MAC information */
-	irq = platform_get_irq_byname(pdev, "gmacirq");
+	irq = platform_get_irq_byname(pdev, "macirq");
 	if (irq == -ENXIO) {
 		printk(KERN_ERR "%s: ERROR: MAC IRQ configuration "
 		       "information not found\n", __func__);
-		ret = -ENXIO;
-		goto out_unmap;
+		return -ENXIO;
 	}
 
 	priv = gmac_dvr_probe(&(pdev->dev), addr, irq);
 	if (!priv) {
 		printk("[gmac]: %s: main driver probe failed", __func__);
-		goto out_unmap;
+		return -ENODEV;
 	}
 
-	if(gmac_sys_request(pdev, priv))
-		goto out_unmap;
-
-	ret = gmac_system_init(priv);
-	if (ret){
-		printk(KERN_ERR "[gmac]: gmac_system_init is failed...\n");
-		goto out_unmap;
-	}
 	platform_set_drvdata(pdev, priv->ndev);
+
+	if(gmac_sys_request(pdev, priv)) {
+		gmac_pltfr_remove(pdev);
+		return -ENODEV;
+	}
 
 	printk("[gmac]: sun6i_gmac platform driver registration completed");
 
 	return 0;
-
-out_unmap:
-	iounmap(addr);
-	platform_set_drvdata(pdev, NULL);
-
-out_release_region:
-	release_mem_region(io_gmac->start, resource_size(io_gmac));
-
-	return ret;
 }
 
 static int gmac_pltfr_remove(struct platform_device *pdev)
 {
 	struct net_device *ndev = platform_get_drvdata(pdev);
-	struct gmac_priv *priv = netdev_priv(ndev);
-	struct resource *res;
 	int ret = gmac_dvr_remove(ndev);
 
-
-	iounmap((void *)priv->ioaddr);
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (res)
-		release_mem_region(res->start, resource_size(res));
-
-	gmac_sys_release(pdev);
 	platform_set_drvdata(pdev, NULL);
 
 	return ret;
@@ -318,6 +219,12 @@ static const struct dev_pm_ops gmac_pltfr_pm_ops = {
 static const struct dev_pm_ops gmac_pltfr_pm_ops;
 #endif /* CONFIG_PM */
 
+static const struct of_device_id gmac_dt_ids[] = {
+	{ .compatible = "allwinner,gmac"},
+	{ /* sentinel */ }
+};
+MODULE_DEVICE_TABLE(of, gmac_dt_ids);
+
 struct platform_driver gmac_driver = {
 	.probe	= gmac_pltfr_probe,
 	.remove = gmac_pltfr_remove,
@@ -325,6 +232,7 @@ struct platform_driver gmac_driver = {
 		   .name = GMAC_RESOURCE_NAME,
 		   .owner = THIS_MODULE,
 		   .pm = &gmac_pltfr_pm_ops,
+		   .of_match_table = of_match_ptr(gmac_dt_ids),
 		   },
 };
 

@@ -132,8 +132,6 @@ static int buf_sz = DMA_BUFFER_SIZE;
 module_param(buf_sz, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(buf_sz, "DMA buffer size");
 
-static int gmac_used;
-
 static const u32 default_msg_level = (NETIF_MSG_DRV | NETIF_MSG_PROBE |
 				      NETIF_MSG_LINK | NETIF_MSG_IFUP |
 				      NETIF_MSG_IFDOWN | NETIF_MSG_TIMER);
@@ -177,29 +175,11 @@ static void gmac_clk_ctl(struct gmac_priv *priv, unsigned int flag)
 	int phy_interface = priv->plat->phy_interface;
 	u32  priv_clk_reg;
 
-#ifndef CONFIG_GMAC_CLK_SYS
-	int reg_value;
-	reg_value = readl(priv->clkbase + AHB1_GATING);
-	flag ? (reg_value |= GMAC_AHB_BIT) : (reg_value &= ~GMAC_AHB_BIT);
-	writel(reg_value, priv->clkbase + AHB1_GATING);
-/*
-	reg_value = readl(priv->clkbase + AHB1_MOD_RESET);
-	flag ? (reg_value |= GMAC_RESET_BIT) : (reg_value &= ~GMAC_RESET_BIT);
-	writel(reg_value, priv->clkbase + AHB1_MOD_RESET);
-*/
-#else
 	if (flag) {
-		clk_enable(priv->gmac_ahb_clk);
-        /*
-		clk_reset(priv->gmac_mod_clk, AW_CCU_CLK_NRESET);
-        */
+		clk_prepare_enable(priv->gmac_ahb_clk);
 	} else {
-		clk_disable(priv->gmac_ahb_clk);
-        /*
-		clk_reset(priv->gmac_mod_clk, AW_CCU_CLK_RESET);
-        */
+		clk_disable_unprepare(priv->gmac_ahb_clk);
 	}
-#endif
 
 	/* We should set the interface type. */
 	priv_clk_reg = readl(priv->gmac_clk_reg + GMAC_CLK_REG);
@@ -1689,30 +1669,12 @@ __setup("mac_addr=", set_mac_addr);
 
 static int __init gmac_init(void)
 {
-#if 1
-#ifdef CONFIG_GMAC_SCRIPT_SYS
-	if (SCRIPT_PARSER_OK != script_parser_fetch("gmac_para", "gmac_used", &gmac_used, 1))
-		printk(KERN_WARNING "emac_init fetch emac using configuration failed\n");
-
-	if (!gmac_used) {
-		printk(KERN_INFO "gmac driver is disabled\n");
-		return 0;
-	}
-#endif
-
-	platform_device_register(&gmac_device);
-#endif
 	return platform_driver_register(&gmac_driver);
 }
 
 static void __exit gmac_remove(void)
 {
-	if (gmac_used != 1) {
-		pr_info("gmac is disabled\n");
-		return;
-	}
 	platform_driver_unregister(&gmac_driver);
-	platform_device_unregister(&gmac_device);
 }
 
 module_init(gmac_init);

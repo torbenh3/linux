@@ -127,19 +127,7 @@ struct gmac_priv {
 	struct device *device;
 	void __iomem *ioaddr;
 
-#ifndef CONFIG_GMAC_SCRIPT_SYS
-	void __iomem *gpiobase;
-#else
-	int gpio_cnt;
-	unsigned int gpio_handle;
-
-#endif
-#ifndef CONFIG_GMAC_CLK_SYS
-	void __iomem *clkbase;
-#else
 	struct clk *gmac_ahb_clk;
-/*	struct clk *gmac_mod_clk;*/
-#endif
 	void __iomem *gmac_clk_reg;
 
 	struct gmac_extra_stats xstats;
